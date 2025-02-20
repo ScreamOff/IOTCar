@@ -1,9 +1,24 @@
 #include <WiFi.h>
 #include <WebServer.h>
+<<<<<<< HEAD
 
 const char* wifi_ssid  = "ssid";
 const char* wifi_password = "haslo";
 
+=======
+#include <DHT.h>
+
+const char* wifi_ssid = #ssid;
+const char* wifi_password = #hasło;
+
+//Piny do czujników dht
+#define DHTPIN 32
+#define DHTTYPE DHT11
+//Inicjalizacja czujnika
+DHT dht(DHTPIN, DHTTYPE);
+//Piny do mierzenia natężenia światła
+#define PHOTORESISTOR_PIN 34
+>>>>>>> origin/experimental
 // L298N motor driver pins
 #define FRONT_IN1 15
 #define FRONT_IN2 17
@@ -13,9 +28,54 @@ const char* wifi_password = "haslo";
 #define REAR_IN2 14
 #define REAR_IN3 12
 #define REAR_IN4 13
+<<<<<<< HEAD
 
 WebServer server(80);
 
+=======
+//Utworzenie serwera na porcie 80
+WebServer server(80);
+//Obsługa czujników
+String getLightIntensity() {
+  int lightValue = analogRead(PHOTORESISTOR_PIN);
+  if (lightValue < 1000) {
+    return "Weak";
+  } else if (lightValue < 3000) {
+    return "Moderate";
+  } else {
+    return "Strong";
+  }
+}
+// Endpoint: dane z DHT11
+void handleSensorData() {
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+  String lightIntensity = getLightIntensity();
+
+  if (isnan(temperature) || isnan(humidity)) {
+    server.send(500, "application/json", "{\"error\":\"Failed to read from DHT sensor!\"}");
+    return;
+  }
+
+  // Tworzymy odpowiedź w formacie JSON
+  String jsonResponse = "{";
+  jsonResponse += "\"temperature\": " + String(temperature) + ",";
+  jsonResponse += "\"humidity\": " + String(humidity) + ",";
+  jsonResponse += "\"lightIntensity\": \"" + lightIntensity + "\"";
+  jsonResponse += "}";
+
+  server.send(200, "application/json", jsonResponse);
+}
+
+// Endpoint: dane z fotorezystora
+void handlePhotocell() {
+  String lightIntensity = getLightIntensity();
+  server.send(200, "text/plain", "Light Intensity: " + lightIntensity);
+}
+
+
+//Silniki
+>>>>>>> origin/experimental
 bool moving = false;
 String currentDirection = "";
 
@@ -89,6 +149,11 @@ void executeCommand(String command) {
 
 // Ustawienie pinów
 void setup() {
+<<<<<<< HEAD
+=======
+  //inicjalizacja czuników
+  dht.begin();
+>>>>>>> origin/experimental
   // Set pin modes as OUTPUT
   pinMode(FRONT_IN1, OUTPUT);
   pinMode(FRONT_IN2, OUTPUT);
@@ -257,6 +322,15 @@ void setup() {
                   "</div>"
                   "</div>"
                   "</div>"
+<<<<<<< HEAD
+=======
+                  "<div id='sensorData'>"
+                  "<h2>Sensor Data</h2>"
+                  "<p>Temperature: <span id='temp'>Loading...</span></p>"
+                  "<p>Humidity: <span id='humidity'>Loading...</span></p>"
+                  "<p>Light Intensity: <span id='lightIntensity'>Loading...</span></p>"
+                  "</div>"
+>>>>>>> origin/experimental
                   "<script>"
                   "function sendCommands() {"
                   "  var xhr = new XMLHttpRequest();"
@@ -270,6 +344,24 @@ void setup() {
                   "  };"
                   "  xhr.send('commands=' + encodeURIComponent(commands));"
                   "}"
+<<<<<<< HEAD
+=======
+                  "function updateSensorData() {"
+                  // Pobieramy dane z czujników
+                  "var xhr = new XMLHttpRequest();"
+                  "xhr.open('GET', '/sensor_data', true);"
+                  "xhr.onreadystatechange = function () {"
+                  "  if (xhr.readyState == 4 && xhr.status == 200) {"
+                  "   var data = JSON.parse(xhr.responseText);"
+                  "  document.getElementById('temp').textContent = data.temperature + ' °C';"
+                  " document.getElementById('humidity').textContent = data.humidity + ' %';"
+                  "document.getElementById('lightIntensity').textContent = data.lightIntensity;"
+                  "}"
+                  "};"
+                  "xhr.send();"
+                  "}"
+                  "setInterval(updateSensorData,2000);"
+>>>>>>> origin/experimental
 
                   "function startMove(direction) {"
                   "  var xhr = new XMLHttpRequest();"
@@ -310,6 +402,11 @@ void setup() {
     server.send(200, "text/html", html);
   });
 
+<<<<<<< HEAD
+=======
+
+  //Obsluga endpointów
+>>>>>>> origin/experimental
   // Move control routes
   server.on("/move_fwd", HTTP_POST, []() {
     forward();
@@ -336,11 +433,16 @@ void setup() {
     stopMotors();
     server.send(200, "text/plain", "Motors Stopped");
   });
+<<<<<<< HEAD
     server.on("/status", HTTP_GET, []() {
+=======
+  server.on("/status", HTTP_GET, []() {
+>>>>>>> origin/experimental
     String status = moving ? "<p>Robot is moving " + currentDirection + "</p>" : "<p>Robot is stopped</p>";
     server.send(200, "text/html", status);
   });
   // Handle control data
+<<<<<<< HEAD
     server.on("/control", HTTP_POST, []() {
       if (server.hasArg("commands")) {
         String commands = server.arg("commands");
@@ -367,6 +469,35 @@ void setup() {
         server.send(400, "application/json", "{\"error\":\"Missing commands\"}");
       }
     });
+=======
+  server.on("/control", HTTP_POST, []() {
+    if (server.hasArg("commands")) {
+      String commands = server.arg("commands");
+      Serial.println("Received commands: " + commands);
+
+      String translation = "<p>Command translation:</p><ul>";
+      // Split commands by ';'
+      int start = 0;
+      int index = commands.indexOf(';', start);
+      while (index != -1) {
+        String command = commands.substring(start, index);
+        command.trim();
+        if (command.length() > 0) {
+          translation += "<li>" + command + "</li>";
+          executeCommand(command);
+        }
+        start = index + 1;
+        index = commands.indexOf(';', start);
+      }
+      translation += "</ul>";
+
+      server.send(200, "text/html", translation);
+    } else {
+      server.send(400, "application/json", "{\"error\":\"Missing commands\"}");
+    }
+  });
+  server.on("/sensor_data", HTTP_GET, handleSensorData);
+>>>>>>> origin/experimental
 
   // Start the server
   server.begin();
