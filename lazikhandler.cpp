@@ -1,9 +1,13 @@
 #include <WiFi.h>
+
 #include <WebServer.h>
+
 #include <DHT.h>
+
 #include "index.h"
-const char* wifi_ssid = "ssid";
-const char* wifi_password = "haslo";
+
+const char * wifi_ssid = "ssid";
+const char * wifi_password = "haslo";
 
 //Piny do czujników dht
 #define DHTPIN 32
@@ -61,7 +65,6 @@ void handlePhotocell() {
   server.send(200, "text/plain", "Light Intensity: " + lightIntensity);
 }
 
-
 //Silniki
 bool moving = false;
 String currentDirection = "";
@@ -108,7 +111,6 @@ void stopMotors() {
   setPins(REAR_IN1, REAR_IN2, REAR_IN3, REAR_IN4, false, false, false, false);
 }
 
-
 void executeCommand(String command) {
   if (command.startsWith("fwd")) {
     int duration = command.substring(3).toInt();
@@ -153,23 +155,18 @@ void setup() {
 
   // Connect to WiFi
   Serial.begin(115200);
-  WiFi.begin(wifi_ssid, wifi_password);
+  WiFi.softAP(wifi_ssid, wifi_password);
 
   Serial.println("\nConnecting to WiFi...");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.print(".");
-  }
 
   Serial.println("\nConnected to WiFi");
   Serial.println("SSID: " + String(wifi_ssid));
-  Serial.println("IP: " + WiFi.localIP().toString());
+  Serial.println("IP: " + WiFi.softAPIP().toString());
 
   // Handle control page
   server.on("/", HTTP_GET, []() {
     server.send(200, "text/html", index_html);
   });
-
 
   //Obsluga endpointów
   // Move control routes
