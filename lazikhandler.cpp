@@ -1,72 +1,158 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <DHT.h>
-#include "index.h"
-const char* wifi_ssid = "ssid";
-const char* wifi_password = "haslo";
 
-//Piny do czujników dht
+// index_html jako string
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Control</title>
+    <style>
+        body { font-family: monospace; background-color: #343434; color: #fff; margin: 0; padding: 0; }
+        h1 { text-align: center; color: #66fcf1; }
+        .controls { display: flex; flex-wrap: wrap; justify-content: center; padding: 20px; gap: 20px; }
+        .command-mode, .arrow-mode { background: #2d2d2d; padding: 20px; border-radius: 10px; width: 300px; }
+        textarea { width: 100%; height: 100px; margin-top: 10px; background: #1f1f1f; color: #fff; border: none; padding: 10px; font-size: 16px; }
+        button { margin-top: 10px; width: 100%; padding: 10px; background: #45a29e; border: none; font-size: 18px; cursor: pointer; color: #0b0c10; }
+        button:hover { background: #1f2833; color: #c5c6c7; }
+        .arrow-buttons { display: grid; grid-template: 60px 60px 60px / 60px 60px 60px; gap: 5px; justify-content: center; margin-top: 10px; }
+        .arrow-buttons button { width: 60px; height: 60px; font-size: 24px; }
+        .up { grid-column: 2; grid-row: 1; }
+        .left { grid-column: 1; grid-row: 2; }
+        .right { grid-column: 3; grid-row: 2; }
+        .down { grid-column: 2; grid-row: 2; }
+    </style>
+</head>
+<body>
+    <h1>Robot Control</h1>
+    <div class="controls">
+        <div class="command-mode">
+            <h2>Command Mode</h2>
+            <textarea id="commands" placeholder="Enter commands here..."></textarea>
+            <button onclick="sendCommands()">Send Commands</button>
+            <div id="response"></div>
+        </div>
+        <div class="arrow-mode">
+            <h2>Arrow Control</h2>
+            <div class="arrow-buttons">
+                <button class="up" onmousedown="startMove('fwd')" onmouseup="stopMove()">W</button>
+                <button class="left" onmousedown="startMove('left')" onmouseup="stopMove()">A</button>
+                <button class="right" onmousedown="startMove('right')" onmouseup="stopMove()">D</button>
+                <button class="down" onmousedown="startMove('back')" onmouseup="stopMove()">S</button>
+            </div>
+        </div>
+        <div class="command-mode">
+            <h2>Sensor Data</h2>
+            <p>Temperature: <span id="temp">Loading...</span></p>
+            <p>Humidity: <span id="humidity">Loading...</span></p>
+            <p><span id="gas">Loading...</span></p>
+        </div>
+    </div>
+    <script>
+        function sendCommands() {
+            var xhr = new XMLHttpRequest();
+            var commands = document.getElementById('commands').value;
+            xhr.open('POST', '/control', true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4 && xhr.status == 200)
+                    document.getElementById('response').innerHTML = xhr.responseText;
+            };
+            xhr.send('commands=' + encodeURIComponent(commands));
+        }
+
+        function updateSensorData() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/sensor_data', true);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    var data = JSON.parse(xhr.responseText);
+                    document.getElementById('temp').textContent = data.temperature + ' °C';
+                    document.getElementById('humidity').textContent = data.humidity + ' %';
+                    document.getElementById('gas').textContent = data.gas;
+                }
+            };
+            xhr.send();
+        }
+        setInterval(updateSensorData, 2000);
+
+        function startMove(direction) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/move_' + direction, true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.send();
+        }
+
+        function stopMove() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/stop', true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.send();
+        }
+    </script>
+</body>
+</html>
+)rawliteral";
+
+// Dane sieci WiFi
+const char* wifi_ssid = "SSIDWifi";
+const char* wifi_password = "pass";
+
+// Czujnik DHT
 #define DHTPIN 32
 #define DHTTYPE DHT11
-//Inicjalizacja czujnika
 DHT dht(DHTPIN, DHTTYPE);
-//Piny do mierzenia natężenia światła
-#define PHOTORESISTOR_PIN 34
-// L298N motor driver pins
+
+// Czujnik światła
+#define MQT135_PIN 34
+
+// Piny silników
 #define FRONT_IN1 15
-#define FRONT_IN2 17
-#define FRONT_IN3 4
-#define FRONT_IN4 16
+#define FRONT_IN2 4
+#define FRONT_IN3 16
+#define FRONT_IN4 17
 #define REAR_IN1 27
 #define REAR_IN2 14
 #define REAR_IN3 12
-#define REAR_IN4 13
-//Utworzenie serwera na porcie 80
+#define REAR_IN4 26
+
 WebServer server(80);
-//Obsługa czujników
-String getLightIntensity() {
-  int lightValue = analogRead(PHOTORESISTOR_PIN);
-  if (lightValue < 1000) {
-    return "Weak";
-  } else if (lightValue < 3000) {
-    return "Moderate";
-  } else {
-    return "Strong";
-  }
+// Funkcja pobierająca poziom gazu z czujnika MQ-135
+String getGasLevel() {
+  int gasValue = analogRead(MQT135_PIN);  // Odczyt wartości z pin 34 (MQ-135)
+  
+  if (gasValue < 500) return "Very Low Gas Level";
+  else if (gasValue < 1500) return "Low Gas Level";
+  else if (gasValue < 2500) return "Moderate Gas Level";
+  else if (gasValue < 3500) return "High Gas Level";
+  else return "Very High Gas Level";
 }
-// Endpoint: dane z DHT11
+// Obsługa czujników
 void handleSensorData() {
   float temperature = dht.readTemperature();
   float humidity = dht.readHumidity();
-  String lightIntensity = getLightIntensity();
+  String gasLevel = getGasLevel();
 
   if (isnan(temperature) || isnan(humidity)) {
     server.send(500, "application/json", "{\"error\":\"Failed to read from DHT sensor!\"}");
     return;
   }
 
-  // Tworzymy odpowiedź w formacie JSON
+
   String jsonResponse = "{";
   jsonResponse += "\"temperature\": " + String(temperature) + ",";
   jsonResponse += "\"humidity\": " + String(humidity) + ",";
-  jsonResponse += "\"lightIntensity\": \"" + lightIntensity + "\"";
+  jsonResponse += "\"gas\": \"" + gasLevel + "\"";
   jsonResponse += "}";
 
   server.send(200, "application/json", jsonResponse);
 }
-
-// Endpoint: dane z fotorezystora
-void handlePhotocell() {
-  String lightIntensity = getLightIntensity();
-  server.send(200, "text/plain", "Light Intensity: " + lightIntensity);
-}
-
-
-//Silniki
 bool moving = false;
 String currentDirection = "";
 
-// Ustawienie pinów
 void setPins(int pin1, int pin2, int pin3, int pin4, bool in1, bool in2, bool in3, bool in4) {
   digitalWrite(pin1, in1);
   digitalWrite(pin2, in2);
@@ -74,71 +160,54 @@ void setPins(int pin1, int pin2, int pin3, int pin4, bool in1, bool in2, bool in
   digitalWrite(pin4, in4);
 }
 
-// Funkcja do ruchu do przodu
 void forward() {
-  // Ustawienie pinów dla ruchu do przodu
   setPins(FRONT_IN1, FRONT_IN2, FRONT_IN3, FRONT_IN4, false, true, true, false);
   setPins(REAR_IN1, REAR_IN2, REAR_IN3, REAR_IN4, true, false, false, true);
 }
 
-// Funkcja do ruchu do tyłu
 void back() {
-  // Ustawienie pinów dla ruchu do tyłu
   setPins(FRONT_IN1, FRONT_IN2, FRONT_IN3, FRONT_IN4, true, false, false, true);
   setPins(REAR_IN1, REAR_IN2, REAR_IN3, REAR_IN4, false, true, true, false);
 }
 
-// Funkcja do skrętu w lewo
 void left() {
-  // Ustawienie pinów dla skrętu w lewo
   setPins(FRONT_IN1, FRONT_IN2, FRONT_IN3, FRONT_IN4, true, false, true, false);
   setPins(REAR_IN1, REAR_IN2, REAR_IN3, REAR_IN4, true, false, true, false);
 }
 
-// Funkcja do skrętu w prawo
 void right() {
-  // Ustawienie pinów dla skrętu w prawo
   setPins(FRONT_IN1, FRONT_IN2, FRONT_IN3, FRONT_IN4, false, true, false, true);
   setPins(REAR_IN1, REAR_IN2, REAR_IN3, REAR_IN4, false, true, false, true);
 }
 
-// Funkcja do zatrzymania silników
 void stopMotors() {
   setPins(FRONT_IN1, FRONT_IN2, FRONT_IN3, FRONT_IN4, false, false, false, false);
   setPins(REAR_IN1, REAR_IN2, REAR_IN3, REAR_IN4, false, false, false, false);
 }
 
-
 void executeCommand(String command) {
   if (command.startsWith("fwd")) {
     int duration = command.substring(3).toInt();
-    setPins(FRONT_IN1, FRONT_IN2, FRONT_IN3, FRONT_IN4, false, true, true, false);
-    setPins(REAR_IN1, REAR_IN2, REAR_IN3, REAR_IN4, true, false, false, true);
+    forward();
     delay(duration);
   } else if (command.startsWith("back")) {
     int duration = command.substring(4).toInt();
-    setPins(FRONT_IN1, FRONT_IN2, FRONT_IN3, FRONT_IN4, true, false, false, true);
-    setPins(REAR_IN1, REAR_IN2, REAR_IN3, REAR_IN4, false, true, true, false);
+    back();
     delay(duration);
   } else if (command.startsWith("left")) {
     int duration = command.substring(4).toInt();
-    setPins(FRONT_IN1, FRONT_IN2, FRONT_IN3, FRONT_IN4, true, false, true, false);
-    setPins(REAR_IN1, REAR_IN2, REAR_IN3, REAR_IN4, true, false, true, false);
+    left();
     delay(duration);
   } else if (command.startsWith("right")) {
     int duration = command.substring(5).toInt();
-    setPins(FRONT_IN1, FRONT_IN2, FRONT_IN3, FRONT_IN4, false, true, false, true);
-    setPins(REAR_IN1, REAR_IN2, REAR_IN3, REAR_IN4, false, true, false, true);
+    right();
     delay(duration);
   }
   stopMotors();
 }
 
-// Ustawienie pinów
 void setup() {
-  //inicjalizacja czuników
   dht.begin();
-  // Set pin modes as OUTPUT
   pinMode(FRONT_IN1, OUTPUT);
   pinMode(FRONT_IN2, OUTPUT);
   pinMode(FRONT_IN3, OUTPUT);
@@ -148,10 +217,8 @@ void setup() {
   pinMode(REAR_IN3, OUTPUT);
   pinMode(REAR_IN4, OUTPUT);
 
-  // Initialize motor pins to LOW
   stopMotors();
 
-  // Connect to WiFi
   Serial.begin(115200);
   WiFi.begin(wifi_ssid, wifi_password);
 
@@ -165,14 +232,10 @@ void setup() {
   Serial.println("SSID: " + String(wifi_ssid));
   Serial.println("IP: " + WiFi.localIP().toString());
 
-  // Handle control page
   server.on("/", HTTP_GET, []() {
     server.send(200, "text/html", index_html);
   });
 
-
-  //Obsluga endpointów
-  // Move control routes
   server.on("/move_fwd", HTTP_POST, []() {
     forward();
     server.send(200, "text/plain", "Moving Forward");
@@ -193,23 +256,22 @@ void setup() {
     server.send(200, "text/plain", "Turning Right");
   });
 
-  // Stop motors
   server.on("/stop", HTTP_POST, []() {
     stopMotors();
     server.send(200, "text/plain", "Motors Stopped");
   });
+
   server.on("/status", HTTP_GET, []() {
     String status = moving ? "<p>Robot is moving " + currentDirection + "</p>" : "<p>Robot is stopped</p>";
     server.send(200, "text/html", status);
   });
-  // Handle control data
+
   server.on("/control", HTTP_POST, []() {
     if (server.hasArg("commands")) {
       String commands = server.arg("commands");
       Serial.println("Received commands: " + commands);
 
       String translation = "<p>Command translation:</p><ul>";
-      // Split commands by ';'
       int start = 0;
       int index = commands.indexOf(';', start);
       while (index != -1) {
@@ -229,9 +291,8 @@ void setup() {
       server.send(400, "application/json", "{\"error\":\"Missing commands\"}");
     }
   });
-  server.on("/sensor_data", HTTP_GET, handleSensorData);
 
-  // Start the server
+  server.on("/sensor_data", HTTP_GET, handleSensorData);
   server.begin();
   Serial.println("Server started");
 }
