@@ -132,7 +132,7 @@ const char index_html_part1[] PROGMEM = R"rawliteral(
     <div class="controls">
         <div class="camera">
             <h2>Camera</h2>
-            <img id="cam" src="http://your-esp32-cam-ip:81/stream" style="width: 100%; max-width: 480px; border-radius: 10px" />
+            <img id="cam" src="http://192.168.0.80/stream" style="width: 100%; max-width: 480px; border-radius: 10px" />
         </div>
         <div class="command-mode">
             <h2>Sensor Data</h2>
@@ -248,8 +248,8 @@ const char index_html_part3[] PROGMEM = R"rawliteral(
 
 
 // Dane sieci WiFi
-const char* wifi_ssid = "";
-const char* wifi_password = "";
+const char* wifi_ssid = "Kujbida-Wifi";
+const char* wifi_password = "69244797";
 // Czujnik DHT
 #define DHTPIN 32
 #define DHTTYPE DHT11
