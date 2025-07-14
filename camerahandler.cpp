@@ -4,8 +4,8 @@
 #include <WebServer.h>
 
 //Replace with your network credentials
-const char* ssid = "Kujbida-Wifi";
-const char* password = "69244797";
+const char* ssid = "";
+const char* password = "";
 IPAddress local_IP(192, 168, 0, 80);  
 IPAddress gateway(192, 168, 0, 1);     
 IPAddress subnet(255, 255, 255, 0);   
