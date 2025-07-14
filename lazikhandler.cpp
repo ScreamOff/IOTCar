@@ -248,8 +248,8 @@ const char index_html_part3[] PROGMEM = R"rawliteral(
 
 
 // Dane sieci WiFi
-const char* wifi_ssid = "Kujbida-Wifi";
-const char* wifi_password = "69244797";
+const char* wifi_ssid = "";
+const char* wifi_password = "";
 // Czujnik DHT
 #define DHTPIN 32
 #define DHTTYPE DHT11
