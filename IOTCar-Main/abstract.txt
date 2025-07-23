@@ -1,0 +1,26 @@
+Celem mojej pracy jest przedstawienie projektu oraz budowy robota którego głównym przeznaczeniem jest inspekcja rur kanalizacyjnych.
+Celem systemu jest zwiększenie wydajności oraz bezpieczeństwa przy jednoczesnym obniżeniu kosztów napraw infrastruktury wodociągowej.
+Tradycyjne metody diagnostyki rur wymagają wielogodzinnych prac demontażowych przestrzeni transportowej oraz wiążą się z działaniem na nieznanym terenie np. Szkodliwe i łatwopalne gazy. Wczesne wykrywanie uszkodzeń oraz możliwość
+rozwiązania problemu bez potrzeby stagnacji infrastruktury miejskiej jest istotne w obniżeniu kosztów jej utrzymania.
+
+Opracowany przeze mnie robot został wyposażony w komponenty umożliwiających skuteczną inspekcję. Napęd sterowany
+mostkami typu H pozwalającymi na przemieszczenie się po długości rurociągu. Kamerę transmitującą obraz w 
+czasie rzeczywistym pozwalając na bieżącą ocenę stanu oraz czujnik gazu MQ 135 wykrwający potencjalnie niebezpieczne
+substancje. Sam Robot jest zdalnie sterowany za pośrednictwem sieci Wifi, a interfejs użytkownika został
+zrealizowany w postaci aplikacji internetowej hostowanej na serwerze.
+
+Proponowane rozwiązanie wyróżnia się niskim kosztem wdrożenia oraz łatwością użytkownia w porównaniu do dostępnych
+rozwiązań rynkowych co czyni go atrakcyjną alternatywą dla bardziej zaawansowanych i tym samym kosztownych systemów.
+Podobne systemy:
+https://uplinkroboticsstore.com/products/marten-inspection-crawler-robot
+https://www.forbergh.pl/pl/p/Robot-do-inspekci-rur-i-kanalow-max-300-metrow%2C-spadki/94
+https://www.instructables.com/DIY-Pan-Tilt-Control-Using-Servos-for-ESP32-Cam-Wi/
+// Po wykonaniu testów : Przeprowadzone testy wykazały, że robot jest w stanie skutecznie/nieskutecznie poruszać się w rurach, przekazywać obraz oraz wykrywać obecność gazów, co potwierdza jego przydatność w diagnostyce 
+infrastruktury kanalizacyjnej.
+
+The aim of my work is to present the design and construction of a robot whose main purpose is the inspection of sewage pipes.
+The goal of the system is to increase efficiency and safety while simultaneously reducing the costs of repairing water infrastructure.
+
+Traditional methods of pipeline diagnostics require many hours of dismantling transport spaces and involve operating in unknown environments, such as hazardous and flammable gases. Early detection of damage and the ability to solve the problem without the need for the stagnation of urban infrastructure are crucial for reducing its maintenance costs.
+
+The robot I have developed is equipped with components that enable effective inspection. A drive system controlled by H-bridge motor drivers allows it to move along the length of the pipeline. A vision camera transmits real-time video, enabling continuous assessment of the pipeline's condition, and an MQ-135 gas sensor detects potentially dangerous substances. The robot itself is remotely controlled via a Wi-Fi network, and the user interface has been implemented as a web application hosted on a server.
